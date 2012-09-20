@@ -4,11 +4,11 @@
 #
 # Usage:
 #
-#   {% flickr_set flickr_username flickr_set_id %}
+#   {% flickr_set flickr_set_id %}
 #
 # Example:
 #
-#   {% flickr_set tsmango 72157625102245887 %}
+#   {% flickr_set 72157625102245887 %}
 #
 # Default Configuration (override in _config.yml):
 #
@@ -19,11 +19,14 @@
 #     a_target:      '_blank'
 #     image_rel:     ''
 #     image_size:    's'
+#     api_key:       ''
 #
 # By default, thumbnails are linked to their corresponding Flickr page.
 # If you override a_href with a size ('s', 'm', etc), the thumbnail will
 # link to that size image. This is useful in combination with the image_rel
 # parameter and a lightbox gallery.
+#
+# You must provide an API Key in order to query Flickr. It must be configured in _config.yml.
 #
 # Author: Thomas Mango
 # Site: http://thomasmango.com
@@ -32,7 +35,6 @@
 # Plugin License: MIT
 
 require 'net/https'
-require 'nokogiri'
 require 'uri'
 require 'json'
 
@@ -41,8 +43,7 @@ module Jekyll
     def initialize(tag_name, config, token)
       super
 
-      @user = config.split[0]
-      @set  = config.split[1]
+      @set  = config.strip
 
       @config = Jekyll.configuration({})['flickr_set'] || {}
 
@@ -52,6 +53,7 @@ module Jekyll
       @config['a_target']      ||= '_blank'
       @config['image_rel']     ||= ''
       @config['image_size']    ||= 's'
+      @config['api_key']       ||= ''
     end
 
     def render(context)
@@ -73,41 +75,26 @@ module Jekyll
     def photos
       @photos = Array.new
 
-      JSON.parse(json)['items'].each do |item|
-        @photos << FlickrPhoto.new(item['title'], item['link'], item['media']['m'], @config['image_size'])
+      JSON.parse(json)['photoset']['photo'].each do |item|
+        @photos << FlickrPhoto.new(item['title'], item['id'], item['secret'], item['server'], item['farm'], @config['image_size'])
       end
 
       @photos.sort
     end
 
-    # Using the given Flickr username and set id, get the location of the set's
-    # atom feed. Using the atom feed's location, fetch the json feed.
-    #
-    # Note: It would have been faster to just require the nsid be given, but
-    # it's easier to use this tag if the flickr username is given instead.
     def json
-      uri  = URI.parse("http://www.flickr.com/photos/#{@user}/sets/#{@set}/")
+      uri  = URI.parse("http://api.flickr.com/services/rest/?method=flickr.photosets.getPhotos&photoset_id=#{@set}&api_key=#{@config['api_key']}&format=json&nojsoncallback=1")
       http = Net::HTTP.new(uri.host, uri.port)
-      doc  = Nokogiri::HTML(http.request(Net::HTTP::Get.new(uri.request_uri)).body)
-
-      url  = doc.css('head link[@rel=alternate]').first['href']
-
-      url.gsub!(/format=atom/,    'format=json&nojsoncallback=1')
-      url.gsub!(/format=rss_200/, 'format=json&nojsoncallback=1')
-
-      uri  = URI.parse(url)
-      http = Net::HTTP.new(uri.host, uri.port)
-
       return http.request(Net::HTTP::Get.new(uri.request_uri)).body
     end
   end
 
   class FlickrPhoto
 
-    def initialize(title, url, thumbnail_url, thumbnail_size)
+    def initialize(title, id, secret, server, farm, thumbnail_size)
       @title          = title
-      @url            = url
-      @thumbnail_url  = thumbnail_url.gsub(/_m\.jpg/i, "_#{thumbnail_size}.jpg")
+      @url            = "http://farm#{farm}.staticflickr.com/#{server}/#{id}_#{secret}.jpg"
+      @thumbnail_url  = url.gsub(/\.jpg/i, "_#{thumbnail_size}.jpg")
       @thumbnail_size = thumbnail_size
     end
 
