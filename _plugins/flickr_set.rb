@@ -57,19 +57,17 @@ module Jekyll
     end
 
     def render(context)
-      <<-EOF
-      <#{@config['gallery_tag']} class="#{@config['gallery_class']}">
-        #{photos.collect{|photo| render_thumbnail(photo)}}
-      </#{@config['gallery_tag']}>
-      EOF
-    end
+      html = "<#{@config['gallery_tag']} class=\"#{@config['gallery_class']}\">"
 
-    def render_thumbnail(photo)
-      <<-EOF
-      <a href="#{photo.url(@config['a_href'])}" target="#{@config['a_target']}">
-        <img src="#{photo.thumbnail_url}" rel="#{@config['image_rel']}"/>
-      </a>
-      EOF
+      photos.each do |photo|
+        html << "<a href=\"#{photo.url(@config['a_href'])}\" target=\"#{@config['a_target']}\">"
+        html << "  <img src=\"#{photo.thumbnail_url}\" rel=\"#{@config['image_rel']}\"/>"
+        html << "</a>"
+      end
+
+      html << "</#{@config['gallery_tag']}>"
+
+      return html
     end
 
     def photos
