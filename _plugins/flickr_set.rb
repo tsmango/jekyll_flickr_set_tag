@@ -81,9 +81,15 @@ module Jekyll
     end
 
     def json
-      uri  = URI.parse("http://api.flickr.com/services/rest/?method=flickr.photosets.getPhotos&photoset_id=#{@set}&api_key=#{@config['api_key']}&format=json&nojsoncallback=1")
-      http = Net::HTTP.new(uri.host, uri.port)
-      return http.request(Net::HTTP::Get.new(uri.request_uri)).body
+      uri  = URI.parse("https://api.flickr.com/services/rest/?method=flickr.photosets.getPhotos&photoset_id=#{@set}&api_key=#{@config['api_key']}&format=json&nojsoncallback=1")
+
+      # Use SSL - the API now requires this.
+      Net::HTTP.start(uri.host, uri.port, :use_ssl => uri.scheme == 'https') do |http|
+        request = Net::HTTP::Get.new uri
+        response = http.request request
+
+        return http.request(Net::HTTP::Get.new(uri.request_uri)).body
+      end
     end
   end
 
