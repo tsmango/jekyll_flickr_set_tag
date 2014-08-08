@@ -81,8 +81,9 @@ module Jekyll
     end
 
     def json
-      uri  = URI.parse("http://api.flickr.com/services/rest/?method=flickr.photosets.getPhotos&photoset_id=#{@set}&api_key=#{@config['api_key']}&format=json&nojsoncallback=1")
+      uri  = URI.parse("https://api.flickr.com/services/rest/?method=flickr.photosets.getPhotos&photoset_id=#{@set}&api_key=#{@config['api_key']}&format=json&nojsoncallback=1")
       http = Net::HTTP.new(uri.host, uri.port)
+      http.use_ssl = true
       return http.request(Net::HTTP::Get.new(uri.request_uri)).body
     end
   end
